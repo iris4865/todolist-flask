@@ -1,82 +1,57 @@
-from flask import Flask, jsonify, request
+import json
+
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 
-from app import app
-
-TODOLIST = [
-    {
-        'id': 0,
-        'title': 'title1',
-        'description': '1111',
-        'priority': 0,
-        'create_date': '2019-05-17',
-        'end_date': '2019-05-18',
-        'complete': True
-    },
-    {
-        'id': 1,
-        'title': 'title2',
-        'description': '2222',
-        'priority': 1,
-        'create_date': '2019-05-17',
-        'end_date': '2019-05-18',
-        'complete': False
-    },
-]
+from app import app, db
+from app.models import Task
 
 CORS(app, resources={r'/*': {'origins': '*'}})
 
 
 @app.route('/api/task/', methods=['GET'])
 def get_all_task():
-    print('get all task.')
-    return jsonify(TODOLIST)
+    tasks = [task.to_dict() for task in Task.query.all()]
+    return make_response(json.dumps(tasks, ensure_ascii=False), 200)
 
 
 @app.route('/api/task/', methods=['POST'])
 def add_task():
-    response_object = {'status': 'success'}
-    title = request.get_json()['title']
-    description = request.get_json()['description']
-    end_date = request.get_json()['end_date']
-    complete = request.get_json()['complete']
+    task = get_task(request.get_json())
+    db.session.add(task)
+    db.session.commit()
 
-    TODOLIST.append(
-        {
-            'id': 2,
-            'title': title,
-            'description': description,
-            'priority': 1,
-            'create_date': '2019-05-17',
-            'end_date': end_date,
-            'complete': complete
-        }
-    )
-    response_object['message'] = 'Task created!'
-    return jsonify(response_object)
+    return make_response(json.dumps({'message': 'Task created!'}, ensure_ascii=False), 200)
 
 
 @app.route('/api/task/<id>', methods=['PUT'])
 def update_task(id):
-    print(request.get_json())
-    print('update task')
-    response_object = {'status': 'success'}
-    response_object['message'] = 'Task updated!'
+    task = Task.query.get(id)
+    task = get_task(request.get_json(), task)
+    db.session.commit()
 
-    id = int(id)
-    TODOLIST[id]['title'] = request.get_json()['title']
-    TODOLIST[id]['description'] = request.get_json()['description']
-    TODOLIST[id]['end_date'] = request.get_json()['end_date']
-    TODOLIST[id]['complete'] = request.get_json()['complete']
-    return jsonify(response_object)
+    return make_response(json.dumps({'message': 'Task updated!'}, ensure_ascii=False), 200)
 
 
 @app.route('/api/task/<id>', methods=['DELETE'])
 def delete_task(id):
-    print('delete task')
-    response_object = {'status': 'success'}
-    response_object['message'] = 'Task Deleted!'
+    task = Task.query.get(id)
+    db.session.delete(task)
+    db.session.commit()
+    return make_response(json.dumps({'message': 'Task deleted!'}, ensure_ascii=False), 200)
 
-    id = int(id)
-    del TODOLIST[id]
-    return jsonify(response_object)
+
+def get_task(json_data, task=None):
+    title = json_data['title']
+    description = json_data['description']
+    end_date = json_data['end_date']
+    complete = json_data['complete']
+
+    if task == None:
+        return Task(title=title, description=description, end_date=end_date, complete=complete)
+    else:
+        task.title = title
+        task.description = description
+        task.end_date = end_date
+        task.complete = complete
+        return task
