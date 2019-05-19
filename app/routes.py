@@ -17,7 +17,18 @@ def get_all_task():
 
 @app.route('/api/task/', methods=['POST'])
 def add_task():
-    task = get_task(request.get_json())
+    json_data = request.get_json()
+
+    title = json_data['title']
+    description = json_data['description']
+    priority = db.session.query(db.func.max(Task.priority)).scalar()
+    print(priority)
+    priority = 1 if priority == None else priority + 1
+    end_date = json_data['end_date']
+    complete = json_data['complete']
+
+    task = Task(title=title, description=description, priority=priority, end_date=end_date, complete=complete)
+
     db.session.add(task)
     db.session.commit()
 
@@ -27,7 +38,14 @@ def add_task():
 @app.route('/api/task/<id>', methods=['PUT'])
 def update_task(id):
     task = Task.query.get(id)
-    task = get_task(request.get_json(), task)
+    
+    json_data = request.get_json()
+    
+    task.title = json_data.get('title', task.title)
+    task.description = json_data.get('description', task.description)
+    task.end_date = json_data.get('end_date', task.end_date)
+    task.priority = json_data.get('priority', task.priority)
+    task.complete = json_data.get('complete', task.complete)
     db.session.commit()
 
     return make_response(json.dumps({'message': 'Task updated!'}, ensure_ascii=False), 200)
@@ -39,19 +57,3 @@ def delete_task(id):
     db.session.delete(task)
     db.session.commit()
     return make_response(json.dumps({'message': 'Task deleted!'}, ensure_ascii=False), 200)
-
-
-def get_task(json_data, task=None):
-    title = json_data['title']
-    description = json_data['description']
-    end_date = json_data['end_date']
-    complete = json_data['complete']
-
-    if task == None:
-        return Task(title=title, description=description, end_date=end_date, complete=complete)
-    else:
-        task.title = title
-        task.description = description
-        task.end_date = end_date
-        task.complete = complete
-        return task
