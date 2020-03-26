@@ -4,7 +4,7 @@ from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 
 from app import app, db
-from app.models import Task
+from models.task import Task
 
 CORS(app, resources={r'/*': {'origins': '*'}})
 
